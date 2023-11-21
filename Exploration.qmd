@@ -1,0 +1,77 @@
+---
+title: "Data visualisation project"
+author: "Yanis Bosch"
+date: "21-11-2023"
+---
+
+```{r}
+library(tidyverse)
+library(readr)
+library(lubridate)
+housing_Connecticut <- read_csv("data/Real_Estate_2001_to_2020_USA.csv",col_types = "cicccdd_cc__") |> rename_with(~ tolower(gsub(" ", "_", .x, fixed = TRUE)))
+```
+
+```{r}
+housing_Connecticut <- housing_Connecticut |> mutate(property_type = case_when(
+                      str_detect(property_type,"Single Family") ~ "Residential",
+                      str_detect(property_type,"Two Family") ~ "Residential",
+                      str_detect(property_type,"Three Family") ~ "Residential",
+                      str_detect(property_type,"Four Family") ~ "Residential",
+                      str_detect(property_type,"Vacant Land") ~ "Others",
+                      str_detect(property_type,"Apartments") ~ "Residential",
+                      str_detect(property_type,"Others") ~ "Others",
+                      str_detect(property_type,"Residential") ~ "Residential",
+                      str_detect(property_type,"Industrial") ~ "Industrial",
+                      str_detect(property_type,"Commercial") ~ "Commercial",
+                      str_detect(property_type,"Condo") ~ "Residential")) |>
+                      mutate(date_recorded = mdy(date_recorded)) |> 
+                      group_by(property_type) |>
+                      arrange(date_recorded) |>
+                      ungroup()
+housing_Connecticut
+```
+
+```{r}
+housing_Connecticut |> filter(residential_type == "Single Family") |> ggplot() +
+                      geom_col(aes(y = sale_amount,x = fct_reorder(serial_number,date_recorded))) +
+                      ylim(0,7000000)
+```
+
+```{r}
+housing_Connecticut |> select(c(date_recorded,sale_amount)) |> group_by(month = lubridate::floor_date(date_recorded, "month")) |> summarize(mean = mean(sale_amount)) |> ggplot() +
+          geom_col(aes(x = month, y = mean))
+```
+```{r}
+housing_Connecticut |> select(c(date_recorded,sale_amount)) |> group_by(year = year(date_recorded)) |> summarize(mean = mean(sale_amount)) |> ggplot() +
+          geom_col(aes(x = year, y = mean))
+```
+
+
+```{r}
+shs <- read_csv("data/shs.csv")
+shs_date_split <- shs |> group_split(date)
+```
+
+```{r}
+#shs |> filter(category == "AMD CPU Speeds") |> pull(name) |> unique()
+shs |> filter(category == "AMD CPU Speeds") |> ggplot() +
+        geom_col(aes(x = date,y = percentage, fill = name)) +
+        facet_wrap(~name) +
+        labs(title = "Evolution of AMD CPU speeds over the years")
+```
+
+```{r}
+shs |> filter(category == "Intel CPU Speeds") |> ggplot() +
+        geom_col(aes(x = date,y = percentage, fill = name)) +
+        facet_wrap(~name) +
+        labs(title = "Evolution of Intel CPU speeds over the years")
+```
+
+```{r}
+shs_date_split[150]
+shs |> filter(category == "Free Hard Drive Space") |> ggplot() +
+        geom_col(aes(x = date,y = percentage, fill = name)) +
+        facet_wrap(~name) +
+        labs(title = "Evolution of free hard drive space over the years")
+```
+
