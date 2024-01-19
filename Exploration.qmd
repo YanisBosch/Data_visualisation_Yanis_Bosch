@@ -37,7 +37,7 @@ housing_Connecticut <- housing_Connecticut |> mutate(property_type = case_when(
                       mutate(date_recorded = mdy(date_recorded)) |>
                       mutate(sale_diff = abs(sale_amount-assessed_value)) |>
                       filter(assessed_value != 1 & sale_amount != 1) |>
-                      arrange(sales_ratio)
+                      arrange(-sales_ratio)
 housing_Connecticut
 ```
 
@@ -98,8 +98,8 @@ rm(r)
 
 housing_Connecticut_filtered |> ggplot(aes(x = sale_amount, y = assessed_value)) +
         stat_binhex() +
-        xlim(0,xmax) +
-        ylim(0,ymax) +
+        #xlim(0,xmax) +
+        #ylim(0,ymax) +
         labs(title = "Sale price vs assessed value", x = "Sale price($)", y = "Assessed value($)",subtitle = "Removal of outliers",caption = "Area: Connecticut USA") +
         scale_fill_viridis_c(trans = 'log10') + 
         guides(fill = guide_colourbar(label = FALSE)) +
