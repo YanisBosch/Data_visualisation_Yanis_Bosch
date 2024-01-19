@@ -14,7 +14,7 @@ library(hexbin)
 library(gridExtra)
 library(cowplot)
 housing_Connecticut <- read_csv("data/Real_Estate_2001_to_2020_USA.csv",col_types = "cicccdd?cc??") |> rename_with(~ tolower(gsub(" ", "_", .x, fixed = TRUE)))
-housing_Connecticut |> arrange(-sales_ratio)
+
 
 ```
 
@@ -37,18 +37,10 @@ housing_Connecticut <- housing_Connecticut |> mutate(property_type = case_when(
                       mutate(date_recorded = mdy(date_recorded)) |>
                       mutate(sale_diff = abs(sale_amount-assessed_value)) |>
                       filter(assessed_value != 1 & sale_amount != 1) |>
-                      arrange(-assessed_value)
+                      arrange(sales_ratio)
 housing_Connecticut
 ```
 
-
-```{r}
-housing_Connecticut |> filter(property_type == "Residential" | property_type == "Others") |> group_by(year = year(date_recorded),property_type) |> summarize(median = median(sale_amount)) |> ggplot() +
-          geom_line(aes(x = year, y = median)) +
-          labs(title = "Median price of housing by year",caption = "Connecticut USA") +
-          geom_vline(xintercept=2007,  linetype='dashed', color='red') +
-          facet_wrap(~property_type)
-```
 ```{r}
 housing_label <-
   housing_Connecticut_fitted |> group_by(year = year(date_recorded))    |> summarize(across(c(sale_amount,assessed_value),mean,.names = "median_{.col}"))|>
@@ -57,7 +49,7 @@ housing_label <-
 housing_Connecticut_fitted |> group_by(year = year(date_recorded)) |> summarize(across(c(sale_amount,assessed_value),mean,.names = "median_{.col}")) |> ggplot() +
           geom_line(aes(x = year, y = median_assessed_value)) +
           geom_line(aes(x = year, y = median_sale_amount)) +
-          labs(title = "Perceived vs actual value of housing", caption = "Connecticut USA", y = "Price($)", x = "Year") +
+          labs(title = "Perceived vs actual value of housing", caption = "Area: Connecticut USA", y = "Price($)", x = "Year") +
           geom_ribbon(aes(x = year,ymin=median_assessed_value,ymax=median_sale_amount, fill= "Actual value"), alpha=0.5) +
           geom_ribbon(aes(x = year,ymax=median_assessed_value,ymin=min(median_assessed_value), fill= "Perceived value"), alpha=0.5) +
           geom_vline(xintercept=2007,  linetype='dashed', color='red') +
@@ -81,7 +73,10 @@ housing_Connecticut_fitted <- left_join(housing_Connecticut,select(fitted,c(id,.
 ```{r}
 housing_Connecticut_fitted |> ggplot(aes(x = sale_amount, y = assessed_value)) +
         stat_binhex() +
-        labs(title = "Sale price vs assessed value", x = "Sale price", y = "Assessed value",caption = "Connecticut USA") 
+        labs(title = "Sale price vs assessed value", x = "Sale price($)", y = "Assessed value($)",caption = "Area: Connecticut USA") +
+        scale_fill_viridis_c(trans = 'log10') + 
+        guides(fill = guide_colourbar(label = FALSE)) +
+        labs(fill = "Count")
 ```
 
 
@@ -92,9 +87,12 @@ housing_Connecticut_filtered <- housing_Connecticut_fitted |> filter((.fitted)/(
 xmax <- housing_Connecticut |> select(sale_amount) |> max()
 ymax <- housing_Connecticut |> select(assessed_value) |> max()
 housing_Connecticut_fitted |> mutate(remove = ifelse(((.fitted)/(assessed_value) > 1/r & (.fitted)/(assessed_value) < r),TRUE,FALSE)) |> ggplot(aes(x = sale_amount, y = assessed_value,colour = remove)) +
-        stat_binhex() +
+        stat_binhex(fill = 'black') +
         guides(colour = "none") +
-        labs(title = "Sale price vs assessed value", x = "Sale price", y = "Assessed value",subtitle = "Outliers", count = "Density",caption = "Connecticut USA") 
+        labs(title = "Sale price vs assessed value", x = "Sale price($)", y = "Assessed value($)",subtitle = "Removal of outliers", count = "Density",caption = "Area: Connecticut USA") +
+        #scale_fill_viridis_c(trans = 'log10') + 
+        guides(fill = guide_colourbar(label = FALSE)) +
+        labs(fill = "Count")
 
 rm(r)
 
@@ -102,7 +100,10 @@ housing_Connecticut_filtered |> ggplot(aes(x = sale_amount, y = assessed_value))
         stat_binhex() +
         xlim(0,xmax) +
         ylim(0,ymax) +
-        labs(title = "Sale price vs assessed value", x = "Sale price", y = "Assessed value",subtitle = "Outliers",caption = "Connecticut USA")
+        labs(title = "Sale price vs assessed value", x = "Sale price($)", y = "Assessed value($)",subtitle = "Removal of outliers",caption = "Area: Connecticut USA") +
+        scale_fill_viridis_c(trans = 'log10') + 
+        guides(fill = guide_colourbar(label = FALSE)) +
+        labs(fill = "Count")
 ```
 
 
@@ -115,7 +116,7 @@ housing_label <-
 housing_Connecticut_filtered |> group_by(year = year(date_recorded)) |> summarize(across(c(sale_amount,assessed_value),mean,.names = "median_{.col}")) |> ggplot() +
           geom_line(aes(x = year, y = median_assessed_value)) +
           geom_line(aes(x = year, y = median_sale_amount)) +
-          labs(title = "Perceived vs actual value of housing", subtitle = "Connecticut USA", y = "Price($)", x = "Year") +
+          labs(title = "Perceived vs actual value of housing", caption = "Area: Connecticut USA", y = "Price($)", x = "Year") +
           geom_ribbon(aes(x = year,ymin=median_assessed_value,ymax=median_sale_amount, fill= "Actual value"), alpha=0.5) +
           geom_ribbon(aes(x = year,ymax=median_assessed_value,ymin=min(median_assessed_value), fill= "Perceived value"), alpha=0.5) +
           geom_vline(xintercept=2007,  linetype='dashed', color='red') +
@@ -151,19 +152,9 @@ housing_Connecticut_filtered|> filter(year(date_recorded) >= 2006 & year(date_re
       geom_text(data = housing_max,aes(x = factor(date_recorded), y = max_amount, label = format(round(as.double(max_amount)/10^6,2), nsmall = 2), hjust = 1.2)) +
       geom_line(data = housing_min,aes(x = factor(date_recorded), y = min_amount, group = 1, colour = "min")) +
       guides(colour = "none") +
-      labs(x = "Year",y = "Sale amount(€)", title = "Distribution of house pricing over the years")
+      labs(x = "Year",y = "Sale amount($)", title = "Distribution of house pricing around the 2008 stock market crash", caption = "Area: Connecticut USA")
 ```
 
-```{r}
-housing_Connecticut |> ggplot() +
-  geom_histogram(aes(x = sales_ratio)) +
-  scale_x_continuous(trans = 'log10') +
-  scale_y_continuous(trans = 'log10')
-```
-```{r}
-housing_Connecticut_filtered |> ggplot() +
-  geom_histogram(aes(x = sales_ratio)) +
-  scale_x_continuous(trans = 'log10') +
-  scale_y_continuous(trans = 'log10')
-```
+
+
 

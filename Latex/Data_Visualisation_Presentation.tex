@@ -1,0 +1,112 @@
+\documentclass{beamer}
+%\usepackage[margin=3.5cm]{geometry}
+%\usepackage[latin1]{inputenc}
+%\usepackage[T1]{fontenc}
+%\usepackage[english]{babel}
+%\usepackage{graphicx}
+%\usepackage{amsmath}
+%\usepackage{amsthm}
+%\usepackage{mathtools}
+%\usepackage{listings}
+%\usepackage{qtree}
+%\newtheorem{thm}{Theorem}
+%\theoremstyle{definition}
+%\newtheorem{defi}{Definition}
+%\newtheorem{nota}{Notation}
+%\theoremstyle{remark}
+%\newtheorem{rem}{Remark}
+%\theoremstyle{proposition}
+%\newtheorem{prop}{Proposition}
+%\newtheorem{lem}{Lemma}
+\setbeamertemplate{caption}[numbered]
+
+\begin{document}
+	\begin{frame}
+		\title{Analysis of housing prices in Connecticut USA}
+		\author{Yanis \textsc{Bosch}}
+		\maketitle
+	\end{frame}
+
+	\begin{frame}{The dataset}
+		\begin{enumerate}
+			\item Data: Housing market in Connecticut USA from 2001 to 2020
+			\item Relevant columns: 
+				\begin{enumerate}
+   					\item Transaction date
+    					\item Sale amount
+    					\item Assessed value
+				\end{enumerate}
+			\item Original provider: Unknown
+			\item Refined by: SANDEEP PANDEY
+			\item Link: https://www.kaggle.com/datasets/spandey8312/real-estate-2001-to-2020-state-of-connecticut-usa
+		\end{enumerate}
+	\end{frame}
+
+	\begin{frame}{First plot idea}
+		\begin{figure}[h]
+			\centering
+			\includegraphics[width = 10cm]{Image1}
+		\end{figure}
+	\end{frame}
+	
+	\begin{frame}{A closer look (1)}
+		\begin{figure}[h]
+			\centering
+			\includegraphics[width = 10cm]{Image8}
+			\caption{\textit{A look at the 4 transactions with the highest $\frac{\text{Sale amount}}{\text{Assessed value}}$ ratio}}
+		\end{figure}
+	\end{frame}
+
+	\begin{frame}{556 HOLLISTER C-8}
+		\begin{figure}[h]
+			\centering
+			\includegraphics[width = 10cm]{Image7}
+			\caption{\textit{Sale price: $33\,328\,000$\$, Assessed value: $19\,880$\$}}
+		\end{figure}
+	\end{frame}
+
+	\begin{frame}{A closer look (2)}
+		\begin{figure}[h]
+			\centering
+			\includegraphics[width = 10cm]{Image2}
+		\end{figure}
+	\end{frame}
+
+	\begin{frame}{Cleaning up the data (1)}
+		\begin{figure}[h]
+			\centering
+			\includegraphics[width = 10cm]{Image3}
+			\caption{\textit{Removal of all transactions where $\frac{\text{Sale amount}}{\text{Assessed value}} \notin \left[  \frac{1}{10}, 10\right]$ }}
+		\end{figure}
+	\end{frame}
+
+	\begin{frame}{Cleaning up the data (2)}
+		\begin{figure}[h]
+			\centering
+			\includegraphics[width = 10cm]{Image4}
+		\end{figure}
+	\end{frame}
+
+	\begin{frame}{Cleaned up plot}
+		\begin{figure}[h]
+			\centering
+			\includegraphics[width = 10cm]{Image5}
+		\end{figure}
+	\end{frame}
+
+	\begin{frame}{Stock market crash of 2008}
+		\begin{figure}[h]
+			\centering
+			\includegraphics[width = 10cm]{Image6}
+		\end{figure}
+	\end{frame}
+\end{document}
+
+
+
+
+
+
+
+
+
