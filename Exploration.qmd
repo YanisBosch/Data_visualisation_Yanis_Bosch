@@ -1,8 +1,10 @@
 ---
 title: "Data visualisation project"
 author: "Yanis Bosch"
-date: "21-11-2023"
+date: "19-01-2024"
 ---
+
+#-------------------RUN FIRST-------------------
 
 ```{r}
 library(tidyverse)
@@ -13,13 +15,12 @@ library(broom)
 library(hexbin)
 library(gridExtra)
 library(cowplot)
-housing_Connecticut <- read_csv("data/Real_Estate_2001_to_2020_USA.csv",col_types = "cicccdd?cc??") |> rename_with(~ tolower(gsub(" ", "_", .x, fixed = TRUE)))
-
-
 ```
 
 ```{r}
-housing_Connecticut <- housing_Connecticut |> mutate(property_type = case_when(
+  housing_Connecticut <- read_csv("data/Real_Estate_2001_to_2020_USA.csv",col_types = "cicccdd?cc??") |> rename_with(~ tolower(gsub(" ", "_", .x, fixed = TRUE)))
+  housing_Connecticut
+  housing_Connecticut <- housing_Connecticut |> mutate(property_type = case_when(
                       str_detect(property_type,"Single Family") ~ "Residential",
                       str_detect(property_type,"Two Family") ~ "Residential",
                       str_detect(property_type,"Three Family") ~ "Residential",
@@ -38,137 +39,61 @@ housing_Connecticut <- housing_Connecticut |> mutate(property_type = case_when(
                       mutate(sale_diff = abs(sale_amount-assessed_value)) |>
                       filter(assessed_value != 1 & sale_amount != 1) |>
                       arrange(-sales_ratio)
-housing_Connecticut
+  housing_Connecticut
+```
+
+#-------------------------------------
+
+#-------------------EXPLORATION-------------------
+
+```{r}
+housing_Connecticut |> filter(residential_type == "Single Family") |> ggplot() +
+                      geom_col(aes(y = sale_amount,x = fct_reorder(serial_number,date_recorded))) +
+                      ylim(0,7000000)
 ```
 
 ```{r}
-housing_label <-
-  housing_Connecticut_fitted |> group_by(year = year(date_recorded))    |> summarize(across(c(sale_amount,assessed_value),mean,.names = "median_{.col}"))|>
-  filter(year == max(year)) |> select(c(median_sale_amount,median_assessed_value)) |> t() |> as_tibble() |> add_column(Type = c("Sale amount","Assessed value")) 
+housing_Connecticut |> select(c(date_recorded,sale_amount)) |> group_by(month = lubridate::floor_date(date_recorded, "month")) |> summarize(mean = mean(sale_amount)) |> ggplot() +
+          geom_col(aes(x = month, y = mean))
 
-housing_Connecticut_fitted |> group_by(year = year(date_recorded)) |> summarize(across(c(sale_amount,assessed_value),mean,.names = "median_{.col}")) |> ggplot() +
-          geom_line(aes(x = year, y = median_assessed_value)) +
-          geom_line(aes(x = year, y = median_sale_amount)) +
-          labs(title = "Perceived vs actual value of housing", caption = "Area: Connecticut USA", y = "Price($)", x = "Year") +
-          geom_ribbon(aes(x = year,ymin=median_assessed_value,ymax=median_sale_amount, fill= "Actual value"), alpha=0.5) +
-          geom_ribbon(aes(x = year,ymax=median_assessed_value,ymin=min(median_assessed_value), fill= "Perceived value"), alpha=0.5) +
-          geom_vline(xintercept=2007,  linetype='dashed', color='red') +
-          guides(fill = "none") +
-          scale_y_continuous(
-            sec.axis = dup_axis(
-              breaks = housing_label$V1,
-              labels = housing_label$Type,
-              name = NULL
-            )
-          )
+housing_Connecticut |> select(c(date_recorded,sale_amount)) |> group_by(month = lubridate::floor_date(date_recorded, "month")) |> summarize(median = median(sale_amount)) |> ggplot() +
+          geom_col(aes(x = month, y = median))
 ```
-
 ```{r}
-fit <- lm(assessed_value ~ sale_amount, data = housing_Connecticut) # create linear model
-fitted <- augment(fit) |> mutate(id = row_number()) |> relocate(id)
-housing_Connecticut <- housing_Connecticut |> mutate(id = row_number()) |> relocate(id)
-housing_Connecticut_fitted <- left_join(housing_Connecticut,select(fitted,c(id,.fitted)),join_by(id))
-```
+housing_Connecticut |> select(c(date_recorded,sale_amount)) |> group_by(year = year(date_recorded)) |> summarize(mean = mean(sale_amount)) |> ggplot() +
+          geom_col(aes(x = year, y = mean))
 
-```{r}
-housing_Connecticut_fitted |> ggplot(aes(x = sale_amount, y = assessed_value)) +
-        stat_binhex() +
-        labs(title = "Sale price vs assessed value", x = "Sale price($)", y = "Assessed value($)",caption = "Area: Connecticut USA") +
-        scale_fill_viridis_c(trans = 'log10') + 
-        guides(fill = guide_colourbar(label = FALSE)) +
-        labs(fill = "Count")
+housing_Connecticut |> select(c(date_recorded,sale_amount)) |> group_by(year = year(date_recorded)) |> summarize(median = median(sale_amount)) |> ggplot() +
+          geom_col(aes(x = year, y = median))
 ```
 
 
 ```{r}
-r = 10L
-housing_Connecticut_filtered <- housing_Connecticut_fitted |> filter((.fitted)/(assessed_value) > 1/r & (.fitted)/(assessed_value) < r)
-
-xmax <- housing_Connecticut |> select(sale_amount) |> max()
-ymax <- housing_Connecticut |> select(assessed_value) |> max()
-housing_Connecticut_fitted |> mutate(remove = ifelse(((.fitted)/(assessed_value) > 1/r & (.fitted)/(assessed_value) < r),TRUE,FALSE)) |> ggplot(aes(x = sale_amount, y = assessed_value,fill = remove)) +
-        stat_binhex() +
-        scale_fill_manual(values=c("red", "black")) +
-        guides(colour = "none") +
-        labs(title = "Sale price vs assessed value", x = "Sale price($)", y = "Assessed value($)",subtitle = "Removal of outliers", count = "Density",caption = "Area: Connecticut USA") +
-        #scale_fill_viridis_c(trans = 'log10') + 
-        guides(fill = guide_colourbar(label = FALSE)) +
-        labs(fill = "Count")
-
-rm(r)
-
-housing_Connecticut_filtered |> ggplot(aes(x = sale_amount, y = assessed_value)) +
-        stat_binhex() +
-        #xlim(0,xmax) +
-        #ylim(0,ymax) +
-        labs(title = "Sale price vs assessed value", x = "Sale price($)", y = "Assessed value($)",subtitle = "Removal of outliers",caption = "Area: Connecticut USA") +
-        scale_fill_viridis_c(trans = 'log10') + 
-        guides(fill = guide_colourbar(label = FALSE)) +
-        labs(fill = "Count")
+shs <- read_csv("data/shs.csv")
+shs_date_split <- shs |> group_split(date)
 ```
-
-
 
 ```{r}
-housing_label <-
-  housing_Connecticut_filtered |> group_by(year = year(date_recorded))    |> summarize(across(c(sale_amount,assessed_value),mean,.names = "median_{.col}"))|>
-  filter(year == max(year)) |> select(c(median_sale_amount,median_assessed_value)) |> t() |> as_tibble() |> add_column(Type = c("Sale amount","Assessed value")) 
-
-housing_Connecticut_filtered |> group_by(year = year(date_recorded)) |> summarize(across(c(sale_amount,assessed_value),mean,.names = "median_{.col}")) |> ggplot() +
-          geom_line(aes(x = year, y = median_assessed_value)) +
-          geom_line(aes(x = year, y = median_sale_amount)) +
-          labs(title = "Perceived vs actual value of housing", caption = "Area: Connecticut USA", y = "Price($)", x = "Year") +
-          geom_ribbon(aes(x = year,ymin=median_assessed_value,ymax=median_sale_amount, fill= "Actual value"), alpha=0.5) +
-          geom_ribbon(aes(x = year,ymax=median_assessed_value,ymin=min(median_assessed_value), fill= "Perceived value"), alpha=0.5) +
-          geom_vline(xintercept=2007,  linetype='dashed', color='red') +
-          guides(fill = "none") +
-          scale_y_continuous(
-            sec.axis = dup_axis(
-              breaks = housing_label$V1,
-              labels = housing_label$Type,
-              name = NULL
-            )
-          )
-
-rm(housing_label)
+#shs |> filter(category == "AMD CPU Speeds") |> pull(name) |> unique()
+shs |> filter(category == "AMD CPU Speeds") |> ggplot() +
+        geom_col(aes(x = date,y = percentage, fill = name)) +
+        facet_wrap(~name) +
+        labs(title = "Evolution of AMD CPU speeds over the years")
 ```
-
-
-
-
-
 
 ```{r}
-housing_label <- housing_Connecticut_filtered |> filter(year(date_recorded) == 2009) |> summarize(min = min(sale_amount), max = max(sale_amount), med = median(sale_amount)) |> t() |> as_tibble() |> add_column(Type = c("Min","Max","Med"))
-
-housing_max <- housing_Connecticut_filtered |> filter(year(date_recorded) >= 2006 & year(date_recorded) <= 2009) |> group_by(year(date_recorded)) |> summarize(max_amount = max(sale_amount)) |> rename(date_recorded = 'year(date_recorded)') |> ungroup()
-
-housing_min <- housing_Connecticut_filtered |> filter(year(date_recorded) >= 2006 & year(date_recorded) <= 2009) |> group_by(year(date_recorded)) |> summarize(min_amount = min(sale_amount)) |> rename(date_recorded = 'year(date_recorded)') |> ungroup()
-
-housing_Connecticut_filtered|> filter(year(date_recorded) >= 2006 & year(date_recorded) <= 2009) |> group_by(year(date_recorded)) |> 
-      ggplot(aes(x = factor(year(date_recorded)),y = sale_amount)) +
-      geom_violin() +
-      #scale_y_continuous(trans = 'log10') + 
-      stat_summary(fun = "median",
-               geom = "crossbar", 
-               width = 1,
-               colour = "blue") +
-      geom_line(data = housing_max,aes(x = factor(date_recorded), y = max_amount, group = 1, colour = "max")) +
-      geom_text(data = housing_max,aes(x = factor(date_recorded), y = max_amount, label = format(round(as.double(max_amount)/10^6,2), nsmall = 2), hjust = 1.2)) +
-      geom_line(data = housing_min,aes(x = factor(date_recorded), y = min_amount, group = 1, colour = "min")) +
-      geom_text(data = housing_min,aes(x = factor(date_recorded), y = min_amount, label = format(round(as.double(min_amount)/10^3,2), nsmall = 2), hjust = 1.2)) +
-      guides(colour = "none") +
-      labs(x = "Year",y = "Sale amount($)", title = "Distribution of house pricing around the 2008 stock market crash", caption = "Area: Connecticut USA") +
-      scale_y_continuous(
-        sec.axis = dup_axis(
-          breaks = housing_label$V1,
-          labels = housing_label$Type,
-          name = NULL
-        ),
-        trans = 'log10'
-      )
+shs |> filter(category == "Intel CPU Speeds") |> ggplot() +
+        geom_col(aes(x = date,y = percentage, fill = name)) +
+        facet_wrap(~name) +
+        labs(title = "Evolution of Intel CPU speeds over the years")
 ```
 
-
+```{r}
+shs_date_split[150]
+shs |> filter(category == "Free Hard Drive Space") |> ggplot() +
+        geom_col(aes(x = date,y = percentage, fill = name)) +
+        facet_wrap(~name) +
+        labs(title = "Evolution of free hard drive space over the years")
+```
 
 

@@ -1,0 +1,142 @@
+---
+title: "Data visualisation project"
+author: "Yanis Bosch"
+date: "19-01-2024"
+---
+
+```{r}
+#Dataframe to store value to label right side of graph
+
+housing_label <-
+  housing_Connecticut_fitted |> group_by(year = year(date_recorded))    |> summarize(across(c(sale_amount,assessed_value),mean,.names = "median_{.col}"))|>
+  filter(year == max(year)) |> select(c(median_sale_amount,median_assessed_value)) |> t() |> as_tibble() |> add_column(Type = c("Sale amount","Assessed value")) 
+
+
+
+housing_Connecticut_fitted |> group_by(year = year(date_recorded)) |> summarize(across(c(sale_amount,assessed_value),mean,.names = "median_{.col}")) |> ggplot() +
+          geom_line(aes(x = year, y = median_assessed_value)) +
+          geom_line(aes(x = year, y = median_sale_amount)) +
+          labs(title = "Perceived vs actual value of housing", caption = "Area: Connecticut USA", y = "Price($)", x = "Year") +
+          geom_ribbon(aes(x = year,ymin=median_assessed_value,ymax=median_sale_amount, fill= "Actual value"), alpha=0.5) +              #ribbon to fill only between the lines
+          geom_ribbon(aes(x = year,ymax=median_assessed_value,ymin=min(median_assessed_value), fill= "Perceived value"), alpha=0.5) +   #ribbon to make sure we dont fill to 0, but the minimal value reached by both lines
+          geom_vline(xintercept=2007,  linetype='dashed', color='red') +
+          guides(fill = "none") +
+          scale_y_continuous(                    #add ticks on right side of graph
+            sec.axis = dup_axis(
+              breaks = housing_label$V1,
+              labels = housing_label$Type,
+              name = NULL
+            )
+          )
+```
+
+```{r}
+fit <- lm(assessed_value ~ sale_amount, data = housing_Connecticut)         # create linear model
+fitted <- augment(fit) |> mutate(id = row_number()) |> relocate(id)         #add row numbers to join
+housing_Connecticut <- housing_Connecticut |> mutate(id = row_number()) |> relocate(id)   #add same numbers to join
+housing_Connecticut_fitted <- left_join(housing_Connecticut,select(fitted,c(id,.fitted)),join_by(id))   #add fitted values for the sale amount to our dataframe
+```
+
+```{r}
+#Note: In the following bin plots no log transforms were applied as they behave very weirdly to log transformed axes and data
+
+housing_Connecticut_fitted |> ggplot(aes(x = sale_amount, y = assessed_value)) +
+        stat_binhex() +                               #binning to solve overplotting
+        labs(title = "Sale price vs assessed value", x = "Sale price($)", y = "Assessed value($)",caption = "Area: Connecticut USA") +
+        scale_fill_viridis_c(trans = 'log10') +       #log transform to colour scale as otherwise the graph would contain only two colours
+        guides(fill = guide_colourbar(label = FALSE)) +  #removing ticks due to log transform and lack of added information
+        labs(fill = "Count")
+```
+
+
+```{r}
+r = 10L
+housing_Connecticut_filtered <- housing_Connecticut_fitted |> filter((.fitted)/(assessed_value) > 1/r & (.fitted)/(assessed_value) < r)
+          #filtering values that differ too far from fitted values
+
+housing_Connecticut_fitted |> mutate(remove = ifelse(((.fitted)/(assessed_value) > 1/r & (.fitted)/(assessed_value) < r),TRUE,FALSE)) |> ggplot(aes(x = sale_amount, y = assessed_value,fill = remove)) +
+        stat_binhex() +
+        scale_fill_manual(values=c("red", "black")) +     #plotting bins in red that will be removed (where remove = True)
+        guides(colour = "none") +                         #remove legend for fill as it doesnt add much information
+        labs(title = "Sale price vs assessed value", x = "Sale price($)", y = "Assessed value($)",subtitle = "Removal of outliers", count = "Density",caption = "Area: Connecticut USA") + 
+        guides(fill = guide_colourbar(label = FALSE)) +   #removing ticks due to log transform and lack of added information
+        labs(fill = "Count")
+
+rm(r)
+
+housing_Connecticut_filtered |> ggplot(aes(x = sale_amount, y = assessed_value)) +
+        stat_binhex() +
+        labs(title = "Sale price vs assessed value", x = "Sale price($)", y = "Assessed value($)",subtitle = "Removal of outliers",caption = "Area: Connecticut USA") +
+        scale_fill_viridis_c(trans = 'log10') + 
+        guides(fill = guide_colourbar(label = FALSE)) +
+        labs(fill = "Count")
+```
+
+
+
+```{r}
+housing_label <-
+  housing_Connecticut_filtered |> group_by(year = year(date_recorded))    |> summarize(across(c(sale_amount,assessed_value),mean,.names = "median_{.col}"))|>
+  filter(year == max(year)) |> select(c(median_sale_amount,median_assessed_value)) |> t() |> as_tibble() |> add_column(Type = c("Sale amount","Assessed value"))    #dataframe to store values for ticks on right hand side of graph
+
+housing_Connecticut_filtered |> group_by(year = year(date_recorded)) |> summarize(across(c(sale_amount,assessed_value),mean,.names = "median_{.col}")) |> ggplot() +
+          geom_line(aes(x = year, y = median_assessed_value)) +
+          geom_line(aes(x = year, y = median_sale_amount)) +
+          labs(title = "Perceived vs actual value of housing", caption = "Area: Connecticut USA", y = "Price($)", x = "Year") +
+          geom_ribbon(aes(x = year,ymin=median_assessed_value,ymax=median_sale_amount, fill= "Actual value"), alpha=0.5) +              #ribbon to fill only between the lines
+          geom_ribbon(aes(x = year,ymax=median_assessed_value,ymin=min(median_assessed_value), fill= "Perceived value"), alpha=0.5) +   #ribbon to make sure we dont fill to 0, but the minimal value reached by both lines
+          geom_vline(xintercept=2007,  linetype='dashed', color='red') +
+          guides(fill = "none") +
+          scale_y_continuous(                    #add ticks on right side of graph
+            sec.axis = dup_axis(
+              breaks = housing_label$V1,
+              labels = housing_label$Type,
+              name = NULL
+            )
+          )
+
+rm(housing_label)
+```
+
+
+
+
+
+
+```{r}
+housing_label <- housing_Connecticut_filtered |> filter(year(date_recorded) == 2009) |> summarize(min = min(sale_amount), max = max(sale_amount), med = median(sale_amount)) |> t() |> as_tibble() |> add_column(Type = c("Min","Max","Med"))   #dataframe to store values for ticks on right hand side of graph
+
+housing_max <- housing_Connecticut_filtered |> filter(year(date_recorded) >= 2006 & year(date_recorded) <= 2009) |> group_by(year(date_recorded)) |> summarize(max_amount = max(sale_amount)) |> rename(date_recorded = 'year(date_recorded)') |> ungroup()
+#dataframe to plot line with maximal values of the sale price
+
+housing_min <- housing_Connecticut_filtered |> filter(year(date_recorded) >= 2006 & year(date_recorded) <= 2009) |> group_by(year(date_recorded)) |> summarize(min_amount = min(sale_amount)) |> rename(date_recorded = 'year(date_recorded)') |> ungroup()
+#dataframe to plot line with minimal values of the sale price
+
+
+housing_Connecticut_filtered|> filter(year(date_recorded) >= 2006 & year(date_recorded) <= 2009) |> group_by(year(date_recorded)) |> 
+      ggplot(aes(x = factor(year(date_recorded)),y = sale_amount)) +
+      geom_violin() +
+      stat_summary(fun = "median",                #plot bar at median of each violin plot
+               geom = "crossbar", 
+               width = 1,
+               colour = "blue") +
+      #plotting "max" line with values as text on graph
+      geom_line(data = housing_max,aes(x = factor(date_recorded), y = max_amount, group = 1, colour = "max")) +
+      geom_text(data = housing_max,aes(x = factor(date_recorded), y = max_amount, label = format(round(as.double(max_amount)/10^6,2), nsmall = 2), hjust = 1.2)) +
+  
+      #plotting "min" line with values as text on graph
+      geom_line(data = housing_min,aes(x = factor(date_recorded), y = min_amount, group = 1, colour = "min")) +
+      geom_text(data = housing_min,aes(x = factor(date_recorded), y = min_amount, label = format(round(as.double(min_amount)/10^3,2), nsmall = 2), hjust = 1.2)) +
+  
+      guides(colour = "none") +
+      labs(x = "Year",y = "Sale amount($)", title = "Distribution of house pricing around the 2008 stock market crash", caption = "Area: Connecticut USA") +
+      scale_y_continuous(                        #add ticks on right side of graph
+        sec.axis = dup_axis(
+          breaks = housing_label$V1,
+          labels = housing_label$Type,
+          name = NULL
+        ),
+        trans = 'log10'
+      )
+rm(housing_label)
+```
