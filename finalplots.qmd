@@ -5,6 +5,11 @@ date: "19-01-2024"
 ---
 
 ```{r}
+  print(housing_Connecticut)
+```
+
+
+```{r}
 #Dataframe to store value to label right side of graph
 
 housing_label <-

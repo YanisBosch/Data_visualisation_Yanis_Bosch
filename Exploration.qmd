@@ -18,7 +18,15 @@ library(cowplot)
 ```
 
 ```{r}
-  housing_Connecticut <- read_csv("data/Real_Estate_2001_to_2020_USA.csv",col_types = "cicccdd?cc??") |> rename_with(~ tolower(gsub(" ", "_", .x, fixed = TRUE)))
+  #download.file("https://www.kaggle.com/datasets/spandey8312/real-estate-2001-to-2020-state-of-connecticut-usa/download?datasetVersionNumber=1","data/archive")
+  #unzip("data/archive")
+  #COULD NOT DOWNLOAD CSV FILE AUTOMATICALLY IN R CODE FROM KAGGLE AS IT ALWAYS SEEMS TO DOWNLOAD A HTML TEXT FILE
+  #=>THE CSV FILE HAS TO BE DOWNLOADED MANUALLY
+  #DOWNLOAD LINK: https://www.kaggle.com/datasets/spandey8312/real-estate-2001-to-2020-state-of-connecticut-usa/download?datasetVersionNumber=1
+```
+
+```{r}
+  housing_Connecticut <- read_csv("data/Real Estate 2001 to 2020 USA.csv",col_types = "cicccdd?cc??") |> rename_with(~ tolower(gsub(" ", "_", .x, fixed = TRUE)))
   housing_Connecticut
   housing_Connecticut <- housing_Connecticut |> mutate(property_type = case_when(
                       str_detect(property_type,"Single Family") ~ "Residential",
@@ -69,6 +77,12 @@ housing_Connecticut |> select(c(date_recorded,sale_amount)) |> group_by(year = y
 
 
 ```{r}
+#download.file("https://minhaskamal.github.io/DownGit/#/home?url=https://github.com/jdegene/steamHWsurvey","data/zipped")
+#unzip("data/zipped")
+#COULD NOT DOWNLOAD CSV FILE AUTOMATICALLY IN R CODE FROM GITHUB AS IT ALWAYS SEEMS TO DOWNLOAD A HTML TEXT FILE
+#=>THE CSV FILE HAS TO BE DOWNLOADED MANUALLY
+#DOWNLOAD LINK: https://minhaskamal.github.io/DownGit/#/home?url=https://github.com/jdegene/steamHWsurvey
+
 shs <- read_csv("data/shs.csv")
 shs_date_split <- shs |> group_split(date)
 ```
